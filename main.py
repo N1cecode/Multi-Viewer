@@ -5,93 +5,7 @@ import pyqtgraph as pg
 import numpy as np
 import os, sys
 
-
-class DrawLabel(QLabel):
-    zoom_rect_moved = pyqtSignal(int, int)
-    zoom_area_captured = pyqtSignal(QPixmap)
-
-    # ------------------------ Init ------------------------- #
-    def __init__(self, select_rect_width=100, select_rect_height=100, enlarge_ratio=2.0):
-        super().__init__()
-        self.setMouseTracking(True)
-        self.select_rect_width = select_rect_width
-        self.select_rect_height = select_rect_height
-        self.enlarge_ratio = enlarge_ratio
-        self.zoom_area_width = int(self.select_rect_width * self.enlarge_ratio)
-        self.zoom_area_height = int(self.select_rect_height * self.enlarge_ratio)
-        self.mouse_x = 0
-        self.mouse_y = 0
-        self.zoomed_area_pixmap = None # 放大区域
-
-    # ----------------------- Function ---------------------- #
-    def get_image_offset(self):
-        label_width = self.width()
-        label_height = self.height()
-
-        pixmap = self.pixmap()
-        if pixmap:
-            pixmap_width = pixmap.width()
-            pixmap_height = pixmap.height()
-        else:
-            return 0, 0  # 如果没有图片，则偏移量为0
-
-        x_offset = (label_width - pixmap_width) // 2 if label_width > pixmap_width else 0
-        y_offset = (label_height - pixmap_height) // 2 if label_height > pixmap_height else 0
-
-        return x_offset, y_offset
-
-    def capture_zoom_area(self):
-        x_offset, y_offset = self.get_image_offset()
-
-        adjusted_x = self.mouse_x - x_offset
-        adjusted_y = self.mouse_y - y_offset
-        
-        if self.pixmap() and self.pixmap().width() > adjusted_x > 0 and self.pixmap().height() > adjusted_y > 0:
-            rect = QRect(adjusted_x - self.select_rect_width // 2, 
-                         adjusted_y - self.select_rect_height // 2,
-                         self.select_rect_width,
-                         self.select_rect_height)
-            zoom_area = self.pixmap().copy(rect)
-            self.zoom_area_captured.emit(zoom_area)
-            self.zoomed_area_pixmap = zoom_area.scaled(self.zoom_area_width, self.zoom_area_height)  # 更新属性并缩放
-            # self.repaint()
-
-    def update_zoom_rect(self, x, y):
-        self.mouse_x = x
-        self.mouse_y = y
-        self.capture_zoom_area()
-        self.repaint()
-        
-    def update_box(self):
-        self.zoom_area_width = int(self.select_rect_width * self.enlarge_ratio)
-        self.zoom_area_height = int(self.select_rect_height * self.enlarge_ratio)
-        
-
-    # ------------------------ Event ------------------------ #
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        painter = QPainter(self)
-        pen = QPen(QColor(255, 0, 0))  # 设置框的颜色为红色
-        pen.setWidth(3)  # 设置线条宽度为3像素
-        painter.setPen(pen)
-        rect = QRect(self.mouse_x - self.select_rect_width // 2, self.mouse_y - self.select_rect_height // 2,
-                     self.select_rect_width, self.select_rect_height)
-        painter.drawRect(rect)
-        
-        # 绘制放大区域的图像
-        if self.zoomed_area_pixmap:
-            # painter.drawPixmap(self.mouse_x - self.zoom_area_width // 2, self.mouse_y - self.zoom_area_height // 2, self.zoomed_area_pixmap)
-            if (self.mouse_x - self.select_rect_width//2) > self.zoom_area_width or (self.mouse_y - self.select_rect_height//2) > self.zoom_area_height:
-                painter.drawPixmap(0, 0, self.zoomed_area_pixmap)
-            else:
-                painter.drawPixmap(self.width() - self.zoom_area_width, self.height() - self.zoom_area_height, self.zoomed_area_pixmap)
-
-    def mouseMoveEvent(self, event):
-        self.mouse_x = event.x()
-        self.mouse_y = event.y()
-        self.zoom_rect_moved.emit(self.mouse_x, self.mouse_y)  # 发出信号
-        self.capture_zoom_area()
-        # self.repaint()
+from src.draw_label import DrawLabel
 
 
 class MainUI(QMainWindow):
@@ -105,15 +19,12 @@ class MainUI(QMainWindow):
         pg.setConfigOptions(antialias = True)
 
         self.num_of_folder = None
-        self.raw_col_dict = {
-            '2':(1, 2),
-            '3':(1, 3),
-            '4':(2, 2),
-            '5':(2, 3),
-            '6':(2, 3)
-        }
+        self.raw_col_dict = {'2':(1, 2), '3':(1, 3), '4':(2, 2),
+                             '5':(2, 3), '6':(2, 3)
+                             }
         self.num_of_raw = None
         self.num_of_col = None
+        self.compare_window = None
         self.init_ui()
 
         # 状态栏
@@ -257,9 +168,9 @@ class MainUI(QMainWindow):
         self.left_layout.addWidget(h_line)
 
         # save figure and quit window
-        self.btn_fig = QPushButton("保存对比图")
+        self.btn_fig = QPushButton("对比图")
         self.btn_fig.setEnabled(False)
-        # self.save_fig.clicked.connect(self.fig_save)
+        self.btn_fig.clicked.connect(self.compare_select_area)
         self.left_layout.addWidget(self.btn_fig)
 
         self.btn_reset = QPushButton("重置")
@@ -295,7 +206,9 @@ class MainUI(QMainWindow):
 
         for i in range(self.num_of_folder):
             # 连接信号
-            self.plot_list[i].zoom_rect_moved.connect(self.sync_zoom_rect)
+            self.plot_list[i].zoom_rect_moved_signal.connect(self.sync_zoom_rect)
+            self.plot_list[i].mouse_tracking_signal.connect(self.sync_mouse_tracking)
+            self.plot_list[i].comparison_ready_signal.connect(self.comparison_ready)
 
     # ----------------------- Function ---------------------- #
     def change_box(self):
@@ -310,20 +223,30 @@ class MainUI(QMainWindow):
             draw_label.enlarge_ratio = value / 10
             draw_label.update_box()
             
-        
+    def comparison_ready(self, flag):
+        self.btn_fig.setEnabled(flag)
+            
     def get_num_folder(self):
         num_str, ok = QInputDialog.getText(self, '对比个数', '输入需要对比的文件夹个数：')
         if ok:
-            if num_str.isdigit():
+            if num_str.isdigit() and int(num_str) <= 6 and int(num_str) >= 2:
                 self.num_of_folder = int(num_str)
+            elif int(num_str) > 6 or int(num_str) < 2:
+                print("对比文件夹数需在2-6个，请重新输入。")
+                self.get_num_folder()
             else:
-                print('输入的不是数字，请重新输入。')
+                print("输入的不是数字，请重新输入。")
                 self.get_num_folder()
                 
     def sync_zoom_rect(self, x, y):
         # 更新所有DrawLabel的视图
         for img_label in self.plot_list:
             img_label.update_zoom_rect(x, y)
+    
+    def sync_mouse_tracking(self, flag):
+        # 更新所有mouse tracking flag
+        for img_label in self.plot_list:
+            img_label.update_tracking_flag(flag)
             
     def select_dir(self):
         button = self.sender()
@@ -359,6 +282,83 @@ class MainUI(QMainWindow):
                                                               Qt.KeepAspectRatio, Qt.SmoothTransformation))
                     # self.plot_list[i].show()
     
+    def compare_select_area(self):
+        # 创建子窗口来展示选中区域
+        self.compare_window = QWidget()
+        self.compare_window.setWindowTitle('对比图')
+        main_layout = QGridLayout(self.compare_window)
+        main_layout.setSpacing(0)
+        
+        grid_widget = QWidget()
+        grid_layout = QGridLayout(grid_widget)
+        
+
+        # 遍历所有 DrawLabel 实例并获取 zoomed_area_pixmap
+        for i, draw_label in enumerate(self.plot_list):
+            if draw_label.zoomed_area_pixmap:
+                # 创建垂直布局
+                vertical_layout = QVBoxLayout()
+                vertical_layout.setSpacing(0)
+                vertical_container = QWidget()
+                vertical_container.setLayout(vertical_layout)
+                
+                # 图像标签
+                img_label = QLabel()
+                img_label.setPixmap(draw_label.zoomed_area_pixmap)
+                
+                # 文字标签
+                text_label = QLabel(f"{self.btn_label_list[i].text()}")
+                text_label.setAlignment(Qt.AlignCenter)
+                
+                vertical_layout.addWidget(img_label)
+                vertical_layout.addWidget(text_label)
+                
+                row = i // self.num_of_col  # 例如，每行显示2个区域
+                col = i % self.num_of_col
+                
+                grid_layout.addWidget(vertical_container, row, col)
+
+        main_layout.addWidget(grid_widget)
+
+        # 保存按钮
+        save_button = QPushButton("保存对比图")
+        save_button.clicked.connect(self.save_comparison)
+        main_layout.addWidget(save_button)
+        
+        self.compare_window.setLayout(main_layout)
+        self.set_window_center(self.compare_window)
+        self.compare_window.show()
+        
+    # 令窗口位于中心位置
+    def set_window_center(self, window):
+        # 获取屏幕尺寸
+        screen_geometry = QDesktopWidget().screenGeometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        # 计算窗口位置
+        window_size = window.geometry()
+        window_x = int((screen_width - window_size.width()) / 2)
+        window_y = int((screen_height - window_size.height()) / 2)
+
+        # 移动窗口
+        window.move(window_x, window_y)
+    
+    def save_comparison(self):
+        # 保存逻辑
+        options = QFileDialog.Options()
+        filename, _ = QFileDialog.getSaveFileName(self.compare_window, 
+                                                  "Save File", "", 
+                                                  "Images (*.png *.xpm *.jpg);;All Files (*)", 
+                                                  options=options)
+        # TODO 保存对比图的逻辑
+        if filename:
+            pass
+    
+    # TODO
+    def calculate_patch_psnr(self):
+        pass
+    
     def quit_act(self):
         # sender 发送信号的对象
         sender = self.sender()
@@ -369,6 +369,8 @@ class MainUI(QMainWindow):
         self.close()
         self.__init__()
     # ------------------------ Event ------------------------ #
+    
+
 
 def main():
     app = QApplication(sys.argv)
