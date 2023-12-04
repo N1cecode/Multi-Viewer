@@ -20,6 +20,10 @@ class DrawLabel(QLabel):
         self.zoom_area_height = int(self.select_rect_height * self.enlarge_ratio)
         self.mouse_x = 0
         self.mouse_y = 0
+        
+        # 原图与缩放图的比例
+        self.scale_ratio = 1
+        self.origin_image = None  # 用于存储原图
         self.zoomed_area_pixmap = None # 放大区域
 
     # ----------------------- Function ---------------------- #
@@ -42,15 +46,19 @@ class DrawLabel(QLabel):
     def capture_zoom_area(self):
         x_offset, y_offset = self.get_image_offset()
 
-        adjusted_x = self.mouse_x - x_offset
-        adjusted_y = self.mouse_y - y_offset
+        adjusted_x = (self.mouse_x - x_offset) * self.scale_ratio
+        adjusted_y = (self.mouse_y - y_offset) * self.scale_ratio
         
-        if self.pixmap() and self.pixmap().width() > adjusted_x > 0 and self.pixmap().height() > adjusted_y > 0:
-            rect = QRect(adjusted_x - self.select_rect_width // 2, 
-                         adjusted_y - self.select_rect_height // 2,
-                         self.select_rect_width,
-                         self.select_rect_height)
-            zoom_area = self.pixmap().copy(rect)
+        zoom_scaled_rect_width = int(self.select_rect_width * self.scale_ratio)
+        zoom_scaled_rect_height = int(self.select_rect_height * self.scale_ratio)
+
+        
+        if self.origin_image and self.origin_image.width() > adjusted_x > 0 and self.origin_image.height() > adjusted_y > 0:
+            rect = QRect(adjusted_x - zoom_scaled_rect_width // 2, 
+                         adjusted_y - zoom_scaled_rect_height // 2,
+                         zoom_scaled_rect_width,
+                         zoom_scaled_rect_height)
+            zoom_area = self.origin_image.copy(rect)
             self.zoom_area_captured_signal.emit(zoom_area)
             self.zoomed_area_pixmap = zoom_area.scaled(self.zoom_area_width, self.zoom_area_height)  # 更新属性并缩放
             # self.repaint()

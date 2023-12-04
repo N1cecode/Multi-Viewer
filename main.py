@@ -3,7 +3,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import pyqtgraph as pg
 import numpy as np
-import os, sys
+import os, sys, cv2
 
 from src.draw_label import DrawLabel
 
@@ -277,9 +277,11 @@ class MainUI(QMainWindow):
                     print(btn.directory)
                     img_path = os.path.join(btn.directory, filename)
                     pixmap = QPixmap(img_path)
+                    self.plot_list[i].origin_image = pixmap
                     self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
                     self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
                                                               Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    self.plot_list[i].scale_ratio = self.plot_list[i].origin_image.height() / self.plot_list[i].pixmap().height()
                     # self.plot_list[i].show()
     
     def compare_select_area(self):
