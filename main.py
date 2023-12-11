@@ -342,6 +342,80 @@ class MainUI(QMainWindow):
         self.set_window_center(self.compare_window)
         self.compare_window.show()
         
+    def get_screen_size(self, screen_num):
+        # 获取当前屏幕的尺寸
+        desktop = QDesktopWidget()
+        screen_geometry = desktop.screenGeometry(screen_num)
+        return screen_geometry
+    
+    def get_num_folder(self):
+        num_str, ok = QInputDialog.getText(self, '对比个数', '输入需要对比的文件夹个数：')
+        
+        desktop = QDesktopWidget()
+        screen_num = desktop.screenNumber(self.frameGeometry().topLeft())
+        self.set_font(screen_num)
+        
+        if ok:
+            if num_str.isdigit() and int(num_str) <= 6 and int(num_str) >= 2:
+                self.num_of_folder = int(num_str)
+            elif int(num_str) > 6 or int(num_str) < 2:
+                print("对比文件夹数需在2-6个，请重新输入。")
+                self.get_num_folder()
+            else:
+                print("输入的不是数字，请重新输入。")
+                self.get_num_folder()
+                
+    def read_list_img(self):
+        self.list_img.clear()
+        files = set(os.listdir(self.btn_label_list[0].directory))
+        
+        image_files = [filename for filename in files if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))]
+        sorted_image_files = sorted(image_files)
+
+        # 将排序后的文件添加到列表中
+        for filename in sorted_image_files:
+            self.list_img.addItem(filename)
+    
+    def sync_zoom_rect(self, x, y):
+        # 更新所有DrawLabel的视图
+        for img_label in self.plot_list:
+            img_label.update_zoom_rect(x, y)
+    
+    def sync_mouse_tracking(self, flag):
+        # 更新所有mouse tracking flag
+        for img_label in self.plot_list:
+            img_label.update_tracking_flag(flag)
+            
+    def select_dir(self):
+        button = self.sender()
+
+        directory = QFileDialog.getExistingDirectory(self, "选择文件夹")
+
+        if directory:
+            button.directory = directory
+            button.setText('.../'+directory.split('/')[-2]+'/'+directory.split('/')[-1])
+        
+        self.read_list_img()
+
+    def set_font(self, screen_num):
+        # ratio = 140
+        self.screen_size = self.get_screen_size(screen_num)
+        print('Screen num:', screen_num, 'Screen size:', self.screen_size.width(), self.screen_size.height())
+        resolution = min(self.screen_size.width(), self.screen_size.height())
+        if resolution == 1080:
+            font_size = 10
+        elif resolution == 2160:
+            font_size = 16
+        # font_size = min(self.screen_size.width(), self.screen_size.height()) // ratio
+        font = QFont()
+        font.setPointSize(font_size)
+        QApplication.setFont(font)
+    
+    def set_zoom_interpolation(self):
+        for img_label in self.plot_list:
+            img_label.set_zoom_interpolation(self.radio_interpolation.isChecked())
+            img_label.update_status()
+        
     # 令窗口位于中心位置
     def set_window_center(self, window):
         # 获取屏幕尺寸
