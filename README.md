@@ -5,7 +5,7 @@ An Intuitive Image Comparison Tool
 
 ## Installation
 ```
-pip install numpy pyqt5 pyqtgraph
+pip install numpy pyqt5 pyqtgraph opencv-python
 ```
 
 ## Usage
