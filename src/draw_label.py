@@ -118,9 +118,9 @@ class DrawLabel(QLabel):
         if self.zoomed_area_pixmap:
             # painter.drawPixmap(self.mouse_x - self.zoom_area_width // 2, self.mouse_y - self.zoom_area_height // 2, self.zoomed_area_pixmap)
             if (self.mouse_x - self.select_rect_width//2) > self.zoom_area_width or (self.mouse_y - self.select_rect_height//2) > self.zoom_area_height:
-                self.painter.drawPixmap(0, 0, self.zoomed_area_pixmap)
+                painter.drawPixmap(0, 0, self.zoomed_area_pixmap)
             else:
-                self.painter.drawPixmap(self.width() - self.zoom_area_width, self.height() - self.zoom_area_height, self.zoomed_area_pixmap)
+                painter.drawPixmap(self.width() - self.zoom_area_width, self.height() - self.zoom_area_height, self.zoomed_area_pixmap)
 
     def mouseMoveEvent(self, event):
         # 鼠标移动事件
