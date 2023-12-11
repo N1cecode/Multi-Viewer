@@ -351,8 +351,12 @@ class MainUI(QMainWindow):
         resolution = min(self.screen_size.width(), self.screen_size.height())
         if resolution == 1080:
             font_size = 10
+        elif resolution == 1440:
+            font_size = 12
         elif resolution == 2160:
             font_size = 16
+        else:
+            font_size = 10
         # font_size = min(self.screen_size.width(), self.screen_size.height()) // ratio
         font = QFont()
         font.setPointSize(font_size)
