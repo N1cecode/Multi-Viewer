@@ -25,6 +25,7 @@ class MainUI(QMainWindow):
         self.num_of_raw = None
         self.num_of_col = None
         self.compare_window = None
+        
         self.init_ui()
 
         # 状态栏
@@ -35,6 +36,9 @@ class MainUI(QMainWindow):
         self.setWindowTitle('Multi-Viewer')
 
     def init_ui(self):
+        # 获取主屏幕大小并设置字体
+        self.set_font(0)
+        
         self.get_num_folder()
         (self.num_of_raw, self.num_of_col) = self.raw_col_dict[str(self.num_of_folder)]
         
@@ -61,7 +65,7 @@ class MainUI(QMainWindow):
         
         # 创建分隔器
         splitter = QSplitter(Qt.Horizontal)
-       
+        
         # 将左侧和右侧的部件添加到分隔器中
         splitter.addWidget(self.left_widget)
         splitter.addWidget(self.right_widget)
@@ -88,6 +92,10 @@ class MainUI(QMainWindow):
         self.showMaximized()
 
     def init_left(self):
+        # 文件夹选择
+        self.label_folder_area = QLabel("对比文件夹选择")
+        self.label_folder_area.setAlignment(Qt.AlignCenter)
+        self.left_layout.addWidget(self.label_folder_area)
         # 根据需要对比的文件夹数量定义button
         self.btn_label_list = []
         for i in range(self.num_of_folder):
@@ -140,12 +148,12 @@ class MainUI(QMainWindow):
         
         self.slider_enlarge = QSlider(Qt.Horizontal, self)
         self.slider_enlarge.setMinimum(10)
-        self.slider_enlarge.setMaximum(30)
+        self.slider_enlarge.setMaximum(40)
         self.slider_enlarge.setValue(20)
         self.left_layout.addWidget(self.slider_enlarge)
         self.slider_enlarge.valueChanged.connect(self.change_enlarge_ratio)
 
-        # 创建水平布局
+        ## 创建水平布局和容器，用于存放BOX大小设置输入框
         input_layout = QHBoxLayout()
         input_container = QWidget()
         input_container.setLayout(input_layout)
@@ -154,19 +162,17 @@ class MainUI(QMainWindow):
         self.input_width = QLineEdit()
         self.input_width.setPlaceholderText("Width")
         self.input_width.setValidator(QIntValidator())
-        # self.input_width.returnPressed.connect(self.match_city)
         input_layout.addWidget(self.input_width)
         
         # lineEdit to input height
         self.input_height = QLineEdit()
         self.input_height.setPlaceholderText("Height")
         self.input_height.setValidator(QIntValidator())
-        # self.input_height.returnPressed.connect(self.match_city)
         input_layout.addWidget(self.input_height)
         
         self.left_layout.addWidget(input_container)
         
-        # 创建Button，改变Box大小
+        ## 创建Button，改变Box大小
         self.btn_box = QPushButton("设置Box")
         # self.btn_box.setEnabled(False)
         self.btn_box.clicked.connect(self.change_box)
@@ -226,75 +232,17 @@ class MainUI(QMainWindow):
         for draw_label in self.plot_list:
             draw_label.select_rect_width = int(self.input_width.text())
             draw_label.select_rect_height = int(self.input_height.text())
-            draw_label.update_box()
+            draw_label.update_status()
     
     def change_enlarge_ratio(self, value):
         self.text_enlarge.setText(f"{(value/10):2}")
         for draw_label in self.plot_list:
             draw_label.enlarge_ratio = value / 10
-            draw_label.update_box()
+            draw_label.update_status()
             
     def comparison_ready(self, flag):
         self.btn_fig.setEnabled(flag)
-            
-    def get_num_folder(self):
-        num_str, ok = QInputDialog.getText(self, '对比个数', '输入需要对比的文件夹个数：')
-        if ok:
-            if num_str.isdigit() and int(num_str) <= 6 and int(num_str) >= 2:
-                self.num_of_folder = int(num_str)
-            elif int(num_str) > 6 or int(num_str) < 2:
-                print("对比文件夹数需在2-6个，请重新输入。")
-                self.get_num_folder()
-            else:
-                print("输入的不是数字，请重新输入。")
-                self.get_num_folder()
-                
-    def sync_zoom_rect(self, x, y):
-        # 更新所有DrawLabel的视图
-        for img_label in self.plot_list:
-            img_label.update_zoom_rect(x, y)
-    
-    def sync_mouse_tracking(self, flag):
-        # 更新所有mouse tracking flag
-        for img_label in self.plot_list:
-            img_label.update_tracking_flag(flag)
-            
-    def select_dir(self):
-        button = self.sender()
-
-        directory = QFileDialog.getExistingDirectory(self, "选择文件夹")
-
-        if directory:
-            button.directory = directory
-            button.setText('.../'+directory.split('/')[-2]+'/'+directory.split('/')[-1])
         
-        self.read_list_img()
-
-    def read_list_img(self):
-        self.list_img.clear()
-        files = set(os.listdir(self.btn_label_list[0].directory))
-        for filename in files:
-                if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
-                    self.list_img.addItem(filename)
-
-    def show_selected_img(self):
-        selected_img = self.list_img.selectedItems()
-        if selected_img:
-            filename = selected_img[0].text()
-            for i, btn in enumerate(self.btn_label_list):
-                # 清空QLabel
-                self.plot_list[i].setPixmap(QPixmap())
-                if btn.directory:
-                    print(btn.directory)
-                    img_path = os.path.join(btn.directory, filename)
-                    pixmap = QPixmap(img_path)
-                    self.plot_list[i].origin_image = pixmap
-                    self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
-                    self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
-                                                              Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                    self.plot_list[i].scale_ratio = self.plot_list[i].origin_image.height() / self.plot_list[i].pixmap().height()
-                    # self.plot_list[i].show()
-    
     def compare_select_area(self):
         # 创建子窗口来展示选中区域
         self.compare_window = QWidget()
@@ -305,7 +253,6 @@ class MainUI(QMainWindow):
         grid_widget = QWidget()
         grid_layout = QGridLayout(grid_widget)
         
-
         # 遍历所有 DrawLabel 实例并获取 zoomed_area_pixmap
         for i, draw_label in enumerate(self.plot_list):
             if draw_label.zoomed_area_pixmap:
@@ -326,7 +273,7 @@ class MainUI(QMainWindow):
                 vertical_layout.addWidget(img_label)
                 vertical_layout.addWidget(text_label)
                 
-                row = i // self.num_of_col  # 例如，每行显示2个区域
+                row = i // self.num_of_col  # 设置N行M列
                 col = i % self.num_of_col
                 
                 grid_layout.addWidget(vertical_container, row, col)
@@ -341,7 +288,7 @@ class MainUI(QMainWindow):
         self.compare_window.setLayout(main_layout)
         self.set_window_center(self.compare_window)
         self.compare_window.show()
-        
+            
     def get_screen_size(self, screen_num):
         # 获取当前屏幕的尺寸
         desktop = QDesktopWidget()
@@ -418,10 +365,8 @@ class MainUI(QMainWindow):
         
     # 令窗口位于中心位置
     def set_window_center(self, window):
-        # 获取屏幕尺寸
-        screen_geometry = QDesktopWidget().screenGeometry()
-        screen_width = screen_geometry.width()
-        screen_height = screen_geometry.height()
+        screen_width = self.screen_size.width()
+        screen_height = self.screen_size.height()
 
         # 计算窗口位置
         window_size = window.geometry()
@@ -462,7 +407,7 @@ class MainUI(QMainWindow):
                     # self.plot_list[i].show()
     
     # TODO
-    def calculate_patch_psnr(self):
+    def calculate_diff_with_gt(self):
         pass
     
     def quit_act(self):
