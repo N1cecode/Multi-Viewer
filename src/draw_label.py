@@ -26,6 +26,7 @@ class DrawLabel(QLabel):
         
         ## 原图与缩放图的比例
         self.scale_ratio = 1
+        self.file_name = None
         self.origin_image = None  # 用于存储原图
         self.zoomed_area_pixmap = None # 放大区域
         
@@ -38,6 +39,7 @@ class DrawLabel(QLabel):
                        }
         self.pen = QPen(self.colors['red'])  # 设置框的颜色为红色
         self.pen.setWidth(3)  # 设置线条宽度为3像素
+        
     # ----------------------- Function ---------------------- #
     def get_image_offset(self):
         label_width = self.width()

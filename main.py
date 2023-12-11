@@ -190,6 +190,11 @@ class MainUI(QMainWindow):
         self.btn_fig.clicked.connect(self.compare_select_area)
         self.left_layout.addWidget(self.btn_fig)
 
+        self.btn_diff = QPushButton("与真值之差")
+        self.btn_diff.setCheckable(True)
+        self.btn_diff.clicked.connect(self.btn_diff_function)
+        self.left_layout.addWidget(self.btn_diff)
+        
         self.btn_reset = QPushButton("重置")
         self.btn_reset.clicked.connect(self.reset)
         self.left_layout.addWidget(self.btn_reset)
@@ -227,6 +232,13 @@ class MainUI(QMainWindow):
             self.plot_list[i].mouse_tracking_signal.connect(self.sync_mouse_tracking)
             self.plot_list[i].comparison_ready_signal.connect(self.comparison_ready)
 
+    # ----------------------- Widget Function ---------------------- #
+    def btn_diff_function(self):
+        if self.btn_diff.isChecked():
+            self.calculate_diff_with_gt()
+        else:
+            self.show_selected_img()
+    
     # ----------------------- Function ---------------------- #
     def change_box(self):
         for draw_label in self.plot_list:
@@ -325,13 +337,13 @@ class MainUI(QMainWindow):
     
     def sync_zoom_rect(self, x, y):
         # 更新所有DrawLabel的视图
-        for img_label in self.plot_list:
-            img_label.update_zoom_rect(x, y)
+        for draw_label in self.plot_list:
+            draw_label.update_zoom_rect(x, y)
     
     def sync_mouse_tracking(self, flag):
         # 更新所有mouse tracking flag
-        for img_label in self.plot_list:
-            img_label.update_tracking_flag(flag)
+        for draw_label in self.plot_list:
+            draw_label.update_tracking_flag(flag)
             
     def select_dir(self):
         button = self.sender()
@@ -363,9 +375,9 @@ class MainUI(QMainWindow):
         QApplication.setFont(font)
     
     def set_zoom_interpolation(self):
-        for img_label in self.plot_list:
-            img_label.set_zoom_interpolation(self.radio_interpolation.isChecked())
-            img_label.update_status()
+        for draw_label in self.plot_list:
+            draw_label.set_zoom_interpolation(self.radio_interpolation.isChecked())
+            draw_label.update_status()
         
     # 令窗口位于中心位置
     def set_window_center(self, window):
@@ -399,9 +411,10 @@ class MainUI(QMainWindow):
                 # 清空QLabel
                 self.plot_list[i].setPixmap(QPixmap())
                 if btn.directory:
-                    print(btn.directory)
+                    # print(btn.directory)
                     img_path = os.path.join(btn.directory, filename)
                     pixmap = QPixmap(img_path)
+                    self.plot_list[i].file_name = filename
                     self.plot_list[i].origin_image = pixmap
                     self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
                     self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
@@ -410,9 +423,23 @@ class MainUI(QMainWindow):
                     self.plot_list[i].update_status()
                     # self.plot_list[i].show()
     
-    # TODO
     def calculate_diff_with_gt(self):
-        pass
+        gt_img = cv2.imread(os.path.join(self.btn_label_list[0].directory, self.plot_list[0].file_name))
+        for i, draw_label in enumerate(self.plot_list):
+            if i==0:
+                continue
+            img = cv2.imread(os.path.join(self.btn_label_list[i].directory, draw_label.file_name))
+            diff = cv2.cvtColor(cv2.absdiff(gt_img, img), cv2.COLOR_BGR2GRAY)
+            
+            height, width = diff.shape
+            bytesPerLine = width
+
+            # 创建QImage对象
+            qImg = QImage(diff.data, width, height, bytesPerLine, QImage.Format_Grayscale8)
+            pixmap = QPixmap.fromImage(qImg)
+            draw_label.setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
+                                                              Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            draw_label.update_status()
     
     def quit_act(self):
         # sender 发送信号的对象
@@ -423,6 +450,7 @@ class MainUI(QMainWindow):
     def reset(self):
         self.close()
         self.__init__()
+    
     # ------------------------ Event ------------------------ #
     
 
