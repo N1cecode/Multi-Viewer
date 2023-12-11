@@ -111,8 +111,19 @@ class MainUI(QMainWindow):
         
         self.left_layout.addWidget(h_line)
         
-        # 控件显示放大倍数
-        ## 创建水平布局
+        # 放大区域选项
+        self.label_zoom_area = QLabel("放大区域选项")
+        self.label_zoom_area.setAlignment(Qt.AlignCenter)
+        self.left_layout.addWidget(self.label_zoom_area)
+        
+        ## 选择是否插值
+        self.radio_interpolation = QRadioButton('插值', self)
+        self.radio_interpolation.setChecked(False)
+        self.radio_interpolation.toggled.connect(self.set_zoom_interpolation)
+        self.left_layout.addWidget(self.radio_interpolation)
+        
+        ## 控件显示放大倍数
+        ### 创建水平布局
         enlarge_layout = QHBoxLayout()
         enlarge_container = QWidget()
         enlarge_container.setLayout(enlarge_layout)
