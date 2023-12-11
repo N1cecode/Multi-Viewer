@@ -102,6 +102,7 @@ class MainUI(QMainWindow):
             self.btn_label_list.append(QPushButton(f"Dir {i+1}"))
             # self.btn_label_list[i].setEnabled(False)
             self.btn_label_list[i].directory = None
+            self.btn_label_list[i].img_list = None
             self.btn_label_list[i].clicked.connect(self.select_dir)
 
         for i in range(self.num_of_folder):
@@ -324,15 +325,20 @@ class MainUI(QMainWindow):
                 print("输入的不是数字，请重新输入。")
                 self.get_num_folder()
                 
-    def read_list_img(self):
-        self.list_img.clear()
-        files = set(os.listdir(self.btn_label_list[0].directory))
+    def read_list_img(self, btn):
+        files = set(os.listdir(btn.directory))
         
         image_files = [filename for filename in files if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))]
         sorted_image_files = sorted(image_files)
+        btn.img_list = sorted_image_files
+        print(btn.img_list)
 
+        if btn is not self.btn_label_list[0]:
+                return
         # 将排序后的文件添加到列表中
+        self.list_img.clear()
         for filename in sorted_image_files:
+
             self.list_img.addItem(filename)
     
     def sync_zoom_rect(self, x, y):
@@ -354,7 +360,7 @@ class MainUI(QMainWindow):
             button.directory = directory
             button.setText('.../'+directory.split('/')[-2]+'/'+directory.split('/')[-1])
         
-        self.read_list_img()
+        self.read_list_img(button)
 
     def set_font(self, screen_num):
         # ratio = 140
@@ -405,9 +411,14 @@ class MainUI(QMainWindow):
         
     def show_selected_img(self):
         selected_img = self.list_img.selectedItems()
+        for item in selected_img:
+            index = self.list_img.row(item)
+            
         if selected_img:
-            filename = selected_img[0].text()
+            # filename = selected_img[0].text()
             for i, btn in enumerate(self.btn_label_list):
+                filename = btn.img_list[index]
+                print(filename)
                 # 清空QLabel
                 self.plot_list[i].setPixmap(QPixmap())
                 if btn.directory:
