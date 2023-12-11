@@ -59,9 +59,16 @@ class DrawLabel(QLabel):
                          zoom_scaled_rect_width,
                          zoom_scaled_rect_height)
             zoom_area = self.origin_image.copy(rect)
-            self.zoom_area_captured_signal.emit(zoom_area)
-            self.zoomed_area_pixmap = zoom_area.scaled(self.zoom_area_width, self.zoom_area_height)  # 更新属性并缩放
-            # self.repaint()
+            # self.zoom_area_captured_signal.emit(zoom_area)
+            if self.zoom_interpolation_flag:
+                # 设置插值
+                self.zoomed_area_pixmap = zoom_area.scaled(self.zoom_area_width, self.zoom_area_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            else:
+                self.zoomed_area_pixmap = zoom_area.scaled(self.zoom_area_width, self.zoom_area_height, Qt.KeepAspectRatio)  # 更新属性并缩放
+            
+            
+    def set_zoom_interpolation(self, flag):
+        self.zoom_interpolation_flag = flag
 
     def update_zoom_rect(self, x, y):
         self.mouse_x = x
