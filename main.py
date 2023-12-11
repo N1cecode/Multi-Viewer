@@ -110,7 +110,7 @@ class MainUI(QMainWindow):
             
         # 图片列表
         self.list_img = QListWidget()
-        self.list_img.itemSelectionChanged.connect(self.show_selected_img)
+        self.list_img.itemSelectionChanged.connect(self.list_img_function)
         self.left_layout.addWidget(self.list_img)
         
         # 创建分割线1
@@ -234,8 +234,16 @@ class MainUI(QMainWindow):
             self.plot_list[i].comparison_ready_signal.connect(self.comparison_ready)
 
     # ----------------------- Widget Function ---------------------- #
+    def list_img_function(self):
+        if self.btn_diff.isChecked():
+            self.get_selected_img()
+            self.calculate_diff_with_gt()
+        else:
+            self.show_selected_img()
+        
     def btn_diff_function(self):
         if self.btn_diff.isChecked():
+            self.get_selected_img()
             self.calculate_diff_with_gt()
         else:
             self.show_selected_img()
@@ -331,7 +339,6 @@ class MainUI(QMainWindow):
         image_files = [filename for filename in files if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))]
         sorted_image_files = sorted(image_files)
         btn.img_list = sorted_image_files
-        print(btn.img_list)
 
         if btn is not self.btn_label_list[0]:
                 return
@@ -409,6 +416,27 @@ class MainUI(QMainWindow):
         if filename:
             pass
         
+    def get_selected_img(self):
+        selected_img = self.list_img.selectedItems()
+        for item in selected_img:
+            index = self.list_img.row(item)
+            
+        if selected_img:
+            # filename = selected_img[0].text()
+            for i, btn in enumerate(self.btn_label_list):
+                if btn.img_list:
+                    filename = btn.img_list[index]
+                    if btn.directory:
+                        img_path = os.path.join(btn.directory, filename)
+                        pixmap = QPixmap(img_path)
+                        self.plot_list[i].file_name = filename
+                        self.plot_list[i].origin_image = pixmap
+                        self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
+                        if i == 0:
+                            self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
+                                                                Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                            self.plot_list[i].scale_ratio = self.plot_list[i].origin_image.height() / self.plot_list[i].pixmap().height()
+                    
     def show_selected_img(self):
         selected_img = self.list_img.selectedItems()
         for item in selected_img:
@@ -417,40 +445,64 @@ class MainUI(QMainWindow):
         if selected_img:
             # filename = selected_img[0].text()
             for i, btn in enumerate(self.btn_label_list):
-                filename = btn.img_list[index]
-                print(filename)
-                # 清空QLabel
-                self.plot_list[i].setPixmap(QPixmap())
-                if btn.directory:
-                    # print(btn.directory)
-                    img_path = os.path.join(btn.directory, filename)
-                    pixmap = QPixmap(img_path)
-                    self.plot_list[i].file_name = filename
-                    self.plot_list[i].origin_image = pixmap
-                    self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
-                    self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
-                                                              Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                    self.plot_list[i].scale_ratio = self.plot_list[i].origin_image.height() / self.plot_list[i].pixmap().height()
-                    self.plot_list[i].update_status()
-                    # self.plot_list[i].show()
+                if btn.img_list:
+                    filename = btn.img_list[index]
+                    # 清空QLabel
+                    self.plot_list[i].setPixmap(QPixmap())
+                    if btn.directory:
+                        img_path = os.path.join(btn.directory, filename)
+                        pixmap = QPixmap(img_path)
+                        self.plot_list[i].file_name = filename
+                        self.plot_list[i].origin_image = pixmap
+                        self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
+                        self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
+                                                                Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        self.plot_list[i].scale_ratio = self.plot_list[i].origin_image.height() / self.plot_list[i].pixmap().height()
+                        self.plot_list[i].update_status()
     
     def calculate_diff_with_gt(self):
         gt_img = cv2.imread(os.path.join(self.btn_label_list[0].directory, self.plot_list[0].file_name))
+        diff_maps = []
         for i, draw_label in enumerate(self.plot_list):
-            if i==0:
-                continue
-            img = cv2.imread(os.path.join(self.btn_label_list[i].directory, draw_label.file_name))
-            diff = cv2.cvtColor(cv2.absdiff(gt_img, img), cv2.COLOR_BGR2GRAY)
-            
-            height, width = diff.shape
-            bytesPerLine = width
+            if self.btn_label_list[i].img_list:
+                if i==0:
+                    draw_label.update_status()
+                    continue
+                img = cv2.imread(os.path.join(self.btn_label_list[i].directory, draw_label.file_name))
+                draw_label.diff_map = cv2.cvtColor(cv2.absdiff(gt_img, img), cv2.COLOR_BGR2GRAY)
+                diff_maps.append(draw_label.diff_map)
 
-            # 创建QImage对象
-            qImg = QImage(diff.data, width, height, bytesPerLine, QImage.Format_Grayscale8)
-            pixmap = QPixmap.fromImage(qImg)
-            draw_label.setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
-                                                              Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            draw_label.update_status()
+        all_diff = np.array(diff_maps)
+        min_val = np.min(all_diff)
+        max_val = np.max(all_diff)
+        
+        normalized_diff = self.normalize_diff_map(diff_maps, min_val, max_val)
+        
+        for i, draw_label in enumerate(self.plot_list):
+            if self.btn_label_list[i].img_list:
+                if i==0:
+                    continue
+                height, width = draw_label.diff_map.shape
+                bytesPerLine = width
+
+                # 创建QImage对象
+                qImg = QImage(normalized_diff[i-1].data, width, height, bytesPerLine, QImage.Format_Grayscale8)
+                pixmap = QPixmap.fromImage(qImg)
+                draw_label.setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
+                                                                Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                draw_label.update_status()
+    
+    def normalize_diff_map(self, diff_maps, min_val, max_val):
+        normalized_images = []
+        for img in diff_maps:
+            mask = ((img >= min_val) & (img <= max_val)).astype('uint8') * 255
+            # 归一化图像
+            norm_img = cv2.normalize(img, None, alpha=0, beta=255, 
+                                    norm_type=cv2.NORM_MINMAX, 
+                                    dtype=cv2.CV_32F,
+                                    mask=mask)
+            normalized_images.append(norm_img.astype(np.uint8))
+        return normalized_images
     
     def quit_act(self):
         # sender 发送信号的对象

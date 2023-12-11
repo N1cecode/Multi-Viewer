@@ -28,6 +28,7 @@ class DrawLabel(QLabel):
         self.scale_ratio = 1
         self.file_name = None
         self.origin_image = None  # 用于存储原图
+        self.diff_map = None # 用于存储差异图
         self.zoomed_area_pixmap = None # 放大区域
         
         self.setMouseTracking(self.mouse_tracking_flag)
@@ -35,7 +36,10 @@ class DrawLabel(QLabel):
         # Instances
         self.colors = {'red': QColor(255, 0, 0),
                        'white': QColor(255, 255, 255),
-                       'black': QColor(0, 0, 0)
+                       'black': QColor(0, 0, 0),
+                       'blue': QColor(0, 0, 255),
+                       'green': QColor(0, 255, 0),
+                       'orange': QColor(255, 69, 0)
                        }
         self.pen = QPen(self.colors['red'])  # 设置框的颜色为红色
         self.pen.setWidth(3)  # 设置线条宽度为3像素
@@ -95,7 +99,7 @@ class DrawLabel(QLabel):
         if self.mouse_tracking_flag:
             self.pen.setColor(self.colors['red'])  # 设置框的颜色为红色
         else:
-            self.pen.setColor(self.colors['black'])  # 设置框的颜色为白色
+            self.pen.setColor(self.colors['white'])  # 设置框的颜色为白色
         self.update_status()
         
     def update_box(self):
