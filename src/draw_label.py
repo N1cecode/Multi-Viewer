@@ -11,8 +11,11 @@ class DrawLabel(QLabel):
     # ------------------------ Init ------------------------- #
     def __init__(self, select_rect_width=100, select_rect_height=100, enlarge_ratio=2.0):
         super().__init__()
+        # Flags
         self.mouse_tracking_flag = True
-        self.setMouseTracking(self.mouse_tracking_flag)
+        self.zoom_interpolation_flag = False
+        
+        # Parameters
         self.select_rect_width = select_rect_width
         self.select_rect_height = select_rect_height
         self.enlarge_ratio = enlarge_ratio
@@ -21,11 +24,20 @@ class DrawLabel(QLabel):
         self.mouse_x = 0
         self.mouse_y = 0
         
-        # 原图与缩放图的比例
+        ## 原图与缩放图的比例
         self.scale_ratio = 1
         self.origin_image = None  # 用于存储原图
         self.zoomed_area_pixmap = None # 放大区域
-
+        
+        self.setMouseTracking(self.mouse_tracking_flag)
+        
+        # Instances
+        self.colors = {'red': QColor(255, 0, 0),
+                       'white': QColor(255, 255, 255),
+                       'black': QColor(0, 0, 0)
+                       }
+        self.pen = QPen(self.colors['red'])  # 设置框的颜色为红色
+        self.pen.setWidth(3)  # 设置线条宽度为3像素
     # ----------------------- Function ---------------------- #
     def get_image_offset(self):
         label_width = self.width()
@@ -73,24 +85,31 @@ class DrawLabel(QLabel):
     def update_zoom_rect(self, x, y):
         self.mouse_x = x
         self.mouse_y = y
-        self.capture_zoom_area()
-        self.repaint()
+        self.update_status()
     
     def update_tracking_flag(self, flag):
         self.mouse_tracking_flag = flag
         self.setMouseTracking(self.mouse_tracking_flag)
+        if self.mouse_tracking_flag:
+            self.pen.setColor(self.colors['red'])  # 设置框的颜色为红色
+        else:
+            self.pen.setColor(self.colors['black'])  # 设置框的颜色为白色
+        self.update_status()
         
     def update_box(self):
         self.zoom_area_width = int(self.select_rect_width * self.enlarge_ratio)
         self.zoom_area_height = int(self.select_rect_height * self.enlarge_ratio)
         
+    def update_status(self):
+        self.update_box()
+        self.capture_zoom_area()
+        self.repaint()
+        
     # ------------------------ Event ------------------------ #
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QPainter(self)
-        pen = QPen(QColor(255, 0, 0))  # 设置框的颜色为红色
-        pen.setWidth(3)  # 设置线条宽度为3像素
-        painter.setPen(pen)
+        painter.setPen(self.pen)
         rect = QRect(self.mouse_x - self.select_rect_width // 2, self.mouse_y - self.select_rect_height // 2,
                      self.select_rect_width, self.select_rect_height)
         painter.drawRect(rect)
@@ -99,9 +118,9 @@ class DrawLabel(QLabel):
         if self.zoomed_area_pixmap:
             # painter.drawPixmap(self.mouse_x - self.zoom_area_width // 2, self.mouse_y - self.zoom_area_height // 2, self.zoomed_area_pixmap)
             if (self.mouse_x - self.select_rect_width//2) > self.zoom_area_width or (self.mouse_y - self.select_rect_height//2) > self.zoom_area_height:
-                painter.drawPixmap(0, 0, self.zoomed_area_pixmap)
+                self.painter.drawPixmap(0, 0, self.zoomed_area_pixmap)
             else:
-                painter.drawPixmap(self.width() - self.zoom_area_width, self.height() - self.zoom_area_height, self.zoomed_area_pixmap)
+                self.painter.drawPixmap(self.width() - self.zoom_area_width, self.height() - self.zoom_area_height, self.zoomed_area_pixmap)
 
     def mouseMoveEvent(self, event):
         # 鼠标移动事件
