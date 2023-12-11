@@ -441,6 +441,25 @@ class MainUI(QMainWindow):
         # TODO 保存对比图的逻辑
         if filename:
             pass
+        
+    def show_selected_img(self):
+        selected_img = self.list_img.selectedItems()
+        if selected_img:
+            filename = selected_img[0].text()
+            for i, btn in enumerate(self.btn_label_list):
+                # 清空QLabel
+                self.plot_list[i].setPixmap(QPixmap())
+                if btn.directory:
+                    print(btn.directory)
+                    img_path = os.path.join(btn.directory, filename)
+                    pixmap = QPixmap(img_path)
+                    self.plot_list[i].origin_image = pixmap
+                    self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
+                    self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
+                                                              Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    self.plot_list[i].scale_ratio = self.plot_list[i].origin_image.height() / self.plot_list[i].pixmap().height()
+                    self.plot_list[i].update_status()
+                    # self.plot_list[i].show()
     
     # TODO
     def calculate_patch_psnr(self):
