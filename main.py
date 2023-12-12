@@ -236,14 +236,14 @@ class MainUI(QMainWindow):
     # ----------------------- Widget Function ---------------------- #
     def list_img_function(self):
         if self.btn_diff.isChecked():
-            self.get_selected_img()
+            self.show_selected_img()
             self.calculate_diff_with_gt()
         else:
             self.show_selected_img()
         
     def btn_diff_function(self):
         if self.btn_diff.isChecked():
-            self.get_selected_img()
+            self.show_selected_img()
             self.calculate_diff_with_gt()
         else:
             self.show_selected_img()
@@ -416,27 +416,6 @@ class MainUI(QMainWindow):
         if filename:
             pass
         
-    def get_selected_img(self):
-        selected_img = self.list_img.selectedItems()
-        for item in selected_img:
-            index = self.list_img.row(item)
-            
-        if selected_img:
-            # filename = selected_img[0].text()
-            for i, btn in enumerate(self.btn_label_list):
-                if btn.img_list:
-                    filename = btn.img_list[index]
-                    if btn.directory:
-                        img_path = os.path.join(btn.directory, filename)
-                        pixmap = QPixmap(img_path)
-                        self.plot_list[i].file_name = filename
-                        self.plot_list[i].origin_image = pixmap
-                        self.plot_list[i].setFixedSize(self.plot_list[i].width(), self.plot_list[i].height())
-                        if i == 0:
-                            self.plot_list[i].setPixmap(pixmap.scaled(self.plot_list[i].width(), self.plot_list[i].height(), 
-                                                                Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                            self.plot_list[i].scale_ratio = self.plot_list[i].origin_image.height() / self.plot_list[i].pixmap().height()
-                    
     def show_selected_img(self):
         selected_img = self.list_img.selectedItems()
         for item in selected_img:
